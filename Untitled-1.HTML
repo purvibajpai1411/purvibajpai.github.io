@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Your Weekly Wings</title>
+  <style>
+    :root {
+      --bg-color: lavender;
+      --text-color: #333;
+      --card-bg: #fff;
+      --task-bg: #f1effc;
+      --btn-bg: #c3b1e1;
+      --btn-hover: #b09ed9;
+    }
+
+    body.dark {
+      --bg-color: #2e2e42;
+      --text-color: #eee;
+      --card-bg: #3b3b55;
+      --task-bg: #57577a;
+      --btn-bg: #7769b0;
+      --btn-hover: #6358a0;
+    }
+
+    * {
+      transition: background-color 0.4s ease, color 0.4s ease;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      margin-top: 20px;
+      font-size: 2.5rem;
+    }
+
+    .theme-toggle {
+      margin-top: 10px;
+      background-color: var(--btn-bg);
+      border: none;
+      padding: 8px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .planner {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      padding: 40px;
+      max-width: 1300px;
+      width: 100%;
+    }
+
+    .day, .goals {
+      background-color: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .day h2, .goals h2 {
+      margin: 0 0 10px;
+      font-size: 1.2rem;
+    }
+
+    .tasks {
+      flex-grow: 1;
+      margin-bottom: 10px;
+    }
+
+    .task {
+      background-color: var(--task-bg);
+      padding: 6px 10px;
+      margin-bottom: 5px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .task input[type="checkbox"] {
+      cursor: pointer;
+    }
+
+    .task.checked {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+
+    .affirmation {
+      font-size: 0.85rem;
+      font-style: italic;
+      margin-top: 5px;
+      color: #555;
+    }
+
+    .add-task-btn {
+      padding: 6px 10px;
+      background-color: var(--btn-bg);
+      border: none;
+      border-radius: 8px;
+      color: var(--text-color);
+      cursor: pointer;
+    }
+
+    .add-task-btn:hover {
+      background-color: var(--btn-hover);
+    }
+
+    @media (max-width: 768px) {
+      .planner { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 480px) {
+      .planner { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Your Weekly Wings 🕊️</h1>
+  <button class="theme-toggle" onclick="toggleTheme()">🌗 Toggle Theme</button>
+
+  <div class="planner" id="planner"></div>
+
+  <audio id="dingSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_7e9f29c69e.mp3?filename=success-1-6297.mp3" preload="auto"></audio>
+
+  <script>
+    const planner = document.getElementById('planner');
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const affirmations = [
+      "✨ You are doing better than you think.",
+      "🌱 Small steps make big changes.",
+      "🌟 Every day is a new beginning.",
+      "💪 You are strong and capable.",
+      "🦋 Growth takes time — keep going.",
+      "🌈 Embrace the journey.",
+      "☀️ Today is your day to shine!"
+    ];
+
+    const defaultWeekdayTasks = [
+      "🔅 6:00 AM - Wake Up",
+      "🍽️ 7:00 AM - Breakfast",
+      "🏫 8:00 AM - 5:00 PM - College",
+      "📖 10:00 AM - 1:00 PM - Study",
+      "📖 7:00 PM - 9:00 PM - Study",
+      "🏋️‍♀️ 6:00 PM - Gym (MWF)",
+      "🍽️ 9:00 PM - Dinner",
+      "💧 Hydration Reminder (Every Hour)"
+    ];
+
+    const weekendTasks = [
+      "🛌 Sleep in a bit!",
+      "🧼 Chores / Cleaning",
+      "📚 Study / Personal Project",
+      "🧘 Relax & Self Care",
+      "💧 Hydration Reminder (Every Hour)"
+    ];
+
+    function loadTasks(dayName) {
+      return JSON.parse(localStorage.getItem("tasks_" + dayName)) || null;
+    }
+
+    function saveTasks(dayName, taskArray) {
+      localStorage.setItem("tasks_" + dayName, JSON.stringify(taskArray));
+    }
+
+    function createTask(text, dayName, tasksContainer, isChecked = false) {
+      const task = document.createElement("div");
+      task.className = "task";
+      if (isChecked) task.classList.add("checked");
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = isChecked;
+      checkbox.onchange = () => {
+        task.classList.toggle("checked");
+        document.getElementById("dingSound").play();
+        updateTasksInStorage(dayName, tasksContainer);
+      };
+
+      const label = document.createElement("span");
+      label.textContent = text;
+      label.onclick = () => {
+        const newText = prompt("Edit task:", label.textContent);
+        if (newText) {
+          label.textContent = newText;
+          updateTasksInStorage(dayName, tasksContainer);
+        }
+      };
+
+      task.oncontextmenu = e => {
+        e.preventDefault();
+        if (confirm("Delete this task?")) {
+          task.remove();
+          updateTasksInStorage(dayName, tasksContainer);
+        }
+      };
+
+      task.appendChild(checkbox);
+      task.appendChild(label);
+      return task;
+    }
+
+    function updateTasksInStorage(dayName, tasksContainer) {
+      const updated = Array.from(tasksContainer.querySelectorAll(".task")).map(t => {
+        return {
+          text: t.querySelector("span").textContent,
+          checked: t.querySelector("input").checked
+        };
+      });
+      saveTasks(dayName, updated);
+    }
+
+    function createDay(name, index) {
+      const day = document.createElement("div");
+      day.className = "day";
+
+      const title = document.createElement("h2");
+      title.textContent = name;
+
+      const tasks = document.createElement("div");
+      tasks.className = "tasks";
+
+      const saved = loadTasks(name);
+      const rawList = (name === "Saturday" || name === "Sunday") ? weekendTasks : defaultWeekdayTasks;
+
+      const list = saved || rawList.map(t => ({ text: t, checked: false }));
+
+      list.forEach(({ text, checked }) => {
+        if (text.includes("Gym") && !["Monday", "Wednesday", "Friday"].includes(name)) return;
+        tasks.appendChild(createTask(text, name, tasks, checked));
+      });
+
+      const affirmation = document.createElement("div");
+      affirmation.className = "affirmation";
+      affirmation.textContent = affirmations[index % affirmations.length];
+
+      const addBtn = document.createElement("button");
+      addBtn.className = "add-task-btn";
+      addBtn.textContent = "➕ Add Task";
+      addBtn.onclick = () => {
+        const newTask = prompt("Enter new task:");
+        if (newTask) {
+          tasks.appendChild(createTask(newTask, name, tasks));
+          updateTasksInStorage(name, tasks);
+        }
+      };
+
+      day.appendChild(title);
+      day.appendChild(tasks);
+      day.appendChild(affirmation);
+      day.appendChild(addBtn);
+      return day;
+    }
+
+    days.forEach((day, i) => {
+      planner.appendChild(createDay(day, i));
+    });
+
+    // Goals section
+    const goalsSection = document.createElement("div");
+    goalsSection.className = "goals";
+    const goalTitle = document.createElement("h2");
+    goalTitle.textContent = "🎯 Weekly Goals";
+    const goalList = document.createElement("div");
+    goalList.className = "tasks";
+
+    const savedGoals = JSON.parse(localStorage.getItem("weeklyGoals")) || [];
+    savedGoals.forEach(goal => {
+      goalList.appendChild(createGoalItem(goal));
+    });
+
+    const goalBtn = document.createElement("button");
+    goalBtn.className = "add-task-btn";
+    goalBtn.textContent = "➕ Add Goal";
+    goalBtn.onclick = () => {
+      const newGoal = prompt("Enter new goal:");
+      if (newGoal) {
+        goalList.appendChild(createGoalItem(newGoal));
+        saveGoalsToStorage();
+      }
+    };
+
+    function createGoalItem(text) {
+      const item = document.createElement("div");
+      item.className = "task";
+      item.textContent = text;
+      item.onclick = () => {
+        const newText = prompt("Edit goal:", text);
+        if (newText) {
+          item.textContent = newText;
+          saveGoalsToStorage();
+        }
+      };
+      item.oncontextmenu = e => {
+        e.preventDefault();
+        if (confirm("Delete this goal?")) {
+          item.remove();
+          saveGoalsToStorage();
+        }
+      };
+      return item;
+    }
+
+    function saveGoalsToStorage() {
+      const all = Array.from(goalList.querySelectorAll(".task")).map(g => g.textContent);
+      localStorage.setItem("weeklyGoals", JSON.stringify(all));
+    }
+
+    goalsSection.appendChild(goalTitle);
+    goalsSection.appendChild(goalList);
+    goalsSection.appendChild(goalBtn);
+    planner.appendChild(goalsSection);
+
+    // Theme toggle
+    function toggleTheme() {
+      document.body.classList.toggle("dark");
+      localStorage.setItem("theme", document.body.classList.contains("dark") ? "dark" : "light");
+    }
+
+    if (localStorage.getItem("theme") === "dark") {
+      document.body.classList.add("dark");
+    }
+
+    // Hydration pop-up reminder every hour
+    setInterval(() => {
+      alert("💧 Time to hydrate! Take a sip of water.");
+    }, 60 * 60 * 1000);
+  </script>
+</body>
+</html>
